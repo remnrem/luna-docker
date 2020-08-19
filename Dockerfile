@@ -5,7 +5,7 @@ WORKDIR /build
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
- && apt-get install -y git g++ emacs r-base nano wget zlib1g-dev fftw3-dev
+ && apt-get install -y git g++ emacs r-base nano wget zlib1g-dev fftw3-dev libgit2-dev libssl-dev libssh2-1-dev
 
 RUN cd /build \
  && git clone https://github.com/remnrem/luna-base.git \
