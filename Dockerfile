@@ -15,7 +15,8 @@ RUN cd /build \
  && make -j 2 \
  && ln -s /build/luna-base/luna /usr/local/bin/luna \
  && ln -s /build/luna-base/destrat /usr/local/bin/destrat \
- && ln -s /build/luna-base/behead /usr/local/bin/behead
+ && ln -s /build/luna-base/behead /usr/local/bin/behead \
+ && ln -s /build/luna-base/fixrows /usr/local/bin/fixrows
 
 RUN cd /build \
  && R -e "install.packages('git2r', repos='http://cran.rstudio.com/')" \
