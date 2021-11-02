@@ -22,6 +22,7 @@ RUN cd /build \
  && R -e "install.packages('git2r', repos='http://cran.rstudio.com/')" \
  && R -e "install.packages('plotrix', repos='http://cran.rstudio.com/')" \
  && R -e "install.packages('geosphere', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('viridis', repos='http://cran.rstudio.com/')" \
  && R -e "install.packages('shiny', repos='http://cran.rstudio.com/')" \
  && R -e "install.packages('data.table', repos='http://cran.rstudio.com/')" \
  && R -e "install.packages('xtable', repos='http://cran.rstudio.com/')" \
