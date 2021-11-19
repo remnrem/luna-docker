@@ -1,0 +1,166 @@
+#!/bin/bash -e
+
+WWWBROWSER="open"
+
+if   [ "$#" -eq 0 ]; then
+    echo "new instance               : luna.docker /path/data/ /path/data1/ /path/data2/"
+    echo "new RStudio instance       : luna.docker -rs password /path/data/ /path/data1/ /path/data2/"
+    echo "list instances             : luna.docker -l"
+    echo "attach to running instance : luna.docker -a {container-ID}"
+    echo "delete instance            : luna.docker -d [container-ID|all]"
+    echo "pull latest luna image     : luna.docker --pull"
+
+    exit 1
+fi
+
+
+A=$1
+
+## RStudip
+if [[ "$A" == "-rs" ]]; then
+    RS_PASSWORD=$2
+    if [[ "$RS_PASSWORD" == "" ]]; then
+	echo "no password specified"
+	exit 0
+    fi
+fi
+
+## List 
+if [[ "$A" == "-l" ]]; then
+  docker ps | awk ' $1=="CONTAINER" || $2 == "remnrem/luna" ' 
+  exit 0
+fi
+
+## Pull latest image
+if [[ "$A" == "--pull" ]]; then
+  docker pull remnrem/luna
+  exit 0
+fi
+
+## Attach
+if [[ "$A" == "-a" ]]; then
+   # docker container id or name might be given as a parameter
+   CONTAINER=$2
+
+   if [[ "$CONTAINER" == "" ]]; then
+   # if no id given simply just connect to the first running container
+       CONTAINER=$(docker ps | grep -Eo "^[0-9a-z]{8,}\b")
+   fi
+
+# start an interactive bash inside the container
+# note some containers don't have bash, then try: ash (alpine), or simply sh
+# the -l at the end stands for login shell that reads profile files (read man)
+   docker exec -i -t $CONTAINER bash -l
+
+   exit 0
+fi
+
+
+##
+## Remove
+##
+
+if [[ "$A" == "-x" || "$A" == "-d" ]]; then
+   # docker container id or name might be given as a parameter
+   CONTAINER=$2
+   
+   if [[ "$CONTAINER" == "all" ]]; then
+       docker system prune
+   else
+       echo "removing ${CONTAINER}..."
+       docker container rm -f $CONTAINER
+   fi
+   exit 0
+fi
+
+
+##
+## New container
+##
+
+# check that any specified volumes to mount exist
+
+VOL1=$1
+VOL2=$2
+VOL3=$3
+
+# mount path, i.e. to specify /data or /home/data  etc in luna versus lunars
+MP=""
+
+# if -rs password then mount points are shifted by two
+if [[ "$A" == "-rs" ]]; then
+    VOL1=$3
+    VOL2=$4
+    VOL3=$5
+    MP="/home/rstudio"
+fi
+
+ARG=""
+
+if [[ "$VOL1" == "." ]]; then    
+    VOL1=$PWD
+fi
+
+if [[ "$VOL1" != "" ]]; then    
+    
+    # if VOL1 is in fact an existing container name/ID, then just attach
+    N=`docker ps --filter "name=${VOL1}" | awk ' NR != 1 { print $1 } '`
+    if [[ "$N" != "" ]]; then    
+	docker exec -i -t $N bash -l	
+	exit 0
+    fi
+
+    N=`docker ps --filter "id=${VOL1}" | awk ' NR != 1 { print $1 } '`
+    if [[ "$N" != "" ]]; then    
+	docker exec -i -t $N bash -l	
+	exit 0
+    fi
+
+    # else, assume it is a folder, and we are to create a new container
+
+    if [ ! -d "$VOL1" ]; then
+	echo "error: $VOL1 does not exist, you must first create it"
+	exit 1
+    fi    
+    echo "mounting ${VOL1} to ${MP}/data/"
+    ARG+=" -v=${VOL1}:${MP}/data " 
+fi
+
+if [[ "$VOL2" != "" ]]; then    
+    if [ ! -d "$VOL2" ]; then
+	echo "error: $VOL2 does not exist, you must first create it"
+	exit 1
+    fi    
+    echo "mounting ${VOL2} to ${MP}/data1/"
+    ARG+=" -v=${VOL2}:${MP}/data1 " 
+fi
+
+if [[ "$VOL3" != "" ]]; then    
+    if [ ! -d "$VOL3" ]; then
+	echo "error: $VOL3 does not exist, you must first create it"
+	exit 1
+    fi    
+    echo "mounting ${VOL3} to ${MP}/data2/"
+    ARG+=" -v=${VOL3}:${MP}/data2 " 
+fi
+
+
+# standard luna or RStudio luna
+
+if [[ "$A" == "-rs" ]]; then
+    echo 
+    echo " *** "
+    echo " *** Starting RStudio... "
+    echo " ***     - 1) open a browser and connect to: http://localhost:8787"
+    echo " ***     - 2) login with user = rstudio, password = $RS_PASSWORD"
+    echo " ***     - 3) when finished, hit ctrl-C in this terminal to close the RStudio server"
+    echo " *** "
+    echo
+
+    exec "$WWWBROWSER" "http://localhost:8787" &
+
+    docker run --rm -e PASSWORD=$RS_PASSWORD -p 8787:8787 $ARG remnrem/luna > /dev/null
+
+else
+    docker run -p 3838:3838 --rm -it $ARG remnrem/luna
+fi
