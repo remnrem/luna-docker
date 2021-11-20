@@ -162,5 +162,6 @@ if [[ "$A" == "-rs" ]]; then
     docker run --rm -e PASSWORD=$RS_PASSWORD -p 8787:8787 $ARG remnrem/luna > /dev/null
 
 else
-    docker run -p 3838:3838 --rm -it $ARG remnrem/luna
+    echo "starting up bash inside remnrem/luna..."
+    docker run -p 3838:3838 --rm -it $ARG remnrem/luna /bin/bash
 fi
