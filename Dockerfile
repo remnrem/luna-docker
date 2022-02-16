@@ -15,9 +15,17 @@ RUN cd /build \
 RUN cd /build \
  && R CMD INSTALL luna
 
+RUN mkdir /pops \
+ && cd /pops \
+ && wget http://zzz.bwh.harvard.edu/dist/luna/pops.tar.gz \
+ && tar -xvzf pops.tar.gz \
+ && rm pops.tar.gz
+
 RUN cd /build \
  && git clone https://gitlab-scm.partners.org/zzz-public/nsrr.git \
- &&  mv /suds /build/nsrr/common/resources/
+ &&  mv /suds /build/nsrr/common/resources/ \
+ &&  mv /pops /build/nsrr/common/resources/
+
 
 WORKDIR /data
 
