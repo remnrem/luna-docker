@@ -17,7 +17,7 @@ RUN cd /build \
 
 RUN mkdir /pops \
  && cd /pops \
- && wget http://zzz.bwh.harvard.edu/dist/luna/pops.tar.gz \
+ && wget https://zzz.bwh.harvard.edu/dist/luna/pops.tar.gz \
  && tar -xvzf pops.tar.gz \
  && rm pops.tar.gz
 
