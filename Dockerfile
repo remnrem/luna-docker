@@ -23,7 +23,7 @@ RUN mkdir /pops \
 
 RUN cd /build \
  && git clone https://gitlab-scm.partners.org/zzz-public/nsrr.git \
- && mkdir /build/nsrr/common/resources/pops
+ && mkdir /build/nsrr/common/resources/pops \
  && mv /pops/model/* /build/nsrr/common/resources/pops/
 
 WORKDIR /data
