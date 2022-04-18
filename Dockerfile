@@ -15,16 +15,10 @@ RUN cd /build \
 RUN cd /build \
  && R CMD INSTALL luna
 
-RUN mkdir /pops \
- && cd /pops \
- && wget https://zzz.bwh.harvard.edu/dist/luna/pops.tar.gz \
- && tar -xvzf pops.tar.gz \
- && rm pops.tar.gz
+RUN echo 'options(defaultPackages=c(getOption("defaultPackages"),"luna" ) )' > ~/.Rprofile
 
 RUN cd /build \
- && git clone https://gitlab-scm.partners.org/zzz-public/nsrr.git \
- && mkdir -p /build/nsrr/common/resources/pops \
- && mv /pops/* /build/nsrr/common/resources/pops/
+ && git clone https://gitlab-scm.partners.org/zzz-public/nsrr.git
 
 WORKDIR /data
 
