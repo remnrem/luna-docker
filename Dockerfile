@@ -4,7 +4,6 @@ WORKDIR /build
 
 RUN cd /build \
  && git clone https://github.com/remnrem/luna-base.git \
- && git clone https://github.com/remnrem/luna.git \
  && cd luna-base \
  && make -j 2 LGBM=1 LGBM_PATH=/build/LightGBM \
  && ln -s /build/luna-base/luna /usr/local/bin/luna \
