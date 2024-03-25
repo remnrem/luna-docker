@@ -8,7 +8,7 @@ Build remnrem/luna docker container
 docker buildx build --platform=linux/arm64,linux/amd64 --push --tag remnrem/luna:latest .
 ```
 
-### Building lunaapi docker For multiple platforms
+### Building lunapi docker For multiple platforms
 ```python
 docker buildx build -f Dockerfile.lunapi --platform=linux/arm64,linux/amd64 --push --tag remnrem/lunapi:latest
 ```
