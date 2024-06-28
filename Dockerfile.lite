@@ -1,0 +1,38 @@
+FROM alpine:latest as build
+
+LABEL description="Luna build container"
+
+WORKDIR /home
+
+RUN apk update \
+ && apk add --no-cache coreutils gcc g++ fftw-dev git make cmake \
+ && git clone --recursive https://github.com/microsoft/LightGBM \
+ && cd LightGBM \
+ && mkdir build \
+ && cd build \
+ && cmake .. \
+ && make -j4 \
+ && make install \
+ && cd /home \
+ && git clone https://github.com/remnrem/luna-base.git \
+ && cd luna-base \
+ && make -j4 ARCH=LINUX LGBM=1 \
+ && cp luna destrat behead /usr/local/bin/ \
+ && cd .. \
+ && rm -rf luna-base \
+ && rm -rf LightGBM
+
+
+FROM alpine:latest as runtime
+LABEL description="Luna runtime container"
+
+RUN apk update && apk add --no-cache \ 
+    libstdc++ fftw libgomp
+
+COPY --from=build /usr/local/bin/luna /usr/local/bin/luna
+COPY --from=build /usr/local/bin/destrat /usr/local/bin/destrat
+COPY --from=build /usr/local/bin/behead /usr/local/bin/behead
+COPY --from=build /usr/local/lib/lib_lightgbm.so /usr/local/lib/lib_lightgbm.so
+
+WORKDIR /data
+
