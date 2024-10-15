@@ -1,4 +1,4 @@
-FROM quay.io/jupyter/minimal-notebook
+FROM quay.io/jupyter/r-notebook
 
 USER root
 
@@ -7,7 +7,7 @@ WORKDIR /build
 ENV DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update \
- && apt-get install -y git g++ less emacs nano wget micro libomp5 cmake fftw3-dev libomp-dev
+ && apt-get install -y git g++ less emacs nano wget micro libomp5 cmake fftw-dev pkg-config libomp-dev
 
 RUN git clone --recursive https://github.com/microsoft/LightGBM \
  && cd LightGBM \
@@ -54,6 +54,31 @@ RUN cd /build \
  && ln -s /build/luna-base/behead /usr/local/bin/behead \
  && ln -s /build/luna-base/fixrows /usr/local/bin/fixrows \
  && sudo cp libluna.a /usr/local/lib/
+
+RUN R -e "install.packages('git2r', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('plotrix', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('geosphere', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('viridis', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('shiny', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('data.table', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('xtable', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('DT', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('shinyFiles', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('shinydashboard', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('lubridate', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('wkb', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('aws.s3', repos='http://cran.rstudio.com/')" \
+ && R -e "install.packages('shinybusy', repos='http://cran.rstudio.com/')"
+
+RUN cd /build \
+ && cp /build/LightGBM/lib_lightgbm.so /usr/local/lib/ \
+ && cp /build/LightGBM/lib_lightgbm.so /usr/lib/ \
+ && rm -rf luna \
+ && git clone https://github.com/remnrem/luna.git \
+ && echo 'PKG_LIBS=include/libluna.a -L/usr/local/lib/ -L${LGBM_PATH} -lfftw3 -l_lightgbm' >> luna/src/Makevars \
+ && LGBM=1 FFTW=/usr/local/ LGBM_PATH=/build/LightGBM/ R CMD INSTALL luna
+
+RUN echo 'options(defaultPackages=c(getOption("defaultPackages"),"luna" ) )' > ~/.Rprofile
 
 # force rebuild of lunapi below
 ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
