@@ -1,4 +1,4 @@
-FROM alpine:3.20.3 as build
+FROM alpine:3.20.3 AS build
 
 LABEL description="Luna build container"
 
@@ -13,8 +13,12 @@ RUN apk update \
  && cmake .. \
  && make -j2 \
  && make install \
- && cd /home \
- && git clone https://github.com/remnrem/luna-base.git \
+ && cd /home 
+
+# force rebuild of luna etc from here below
+ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+
+RUN git clone https://github.com/remnrem/luna-base.git \
  && cd luna-base \
  && make -j2 ARCH=LINUX LGBM=1 \
  && cp luna destrat behead /usr/local/bin/ \
@@ -23,7 +27,7 @@ RUN apk update \
  && rm -rf LightGBM
 
 
-FROM alpine:3.20.3 as runtime
+FROM alpine:3.20.3 AS runtime
 LABEL description="Luna runtime container"
 
 RUN apk update && apk add --no-cache \ 
