@@ -1,39 +1,68 @@
-# This is a basic workflow to help you get started with Actions
-
 name: CI
 
-# Controls when the action will run. Triggers the workflow on push or pull request
-# events but only for the master branch
 on:
   schedule:
     - cron: '5 0 * * 1'
   workflow_dispatch:
-    branches: [ master ]
   push:
     branches: [ master ]
   pull_request:
     branches: [ master ]
 
-# A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "build"
-  build:
-    # The type of runner that the job will run on
+  build-luna:
     runs-on: ubuntu-latest
-
-    # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-    - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
 
-    - name: Build and push Docker images
-      uses: docker/build-push-action@v1.1.0
-      with:
-        username: ${{ secrets.DOCKER_USERNAME }}
-        password: ${{ secrets.DOCKER_PASSWORD }}
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-        # Docker repository to tag the image with
-        repository: remnrem/luna
-        tags: latest
-        #tag_with_ref: true
-        #push: ${{ startsWith(github.ref, 'refs/tags/') }}
+      - name: Build and push remnrem/luna
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: remnrem/luna:latest
+
+  build-lunalite:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push remnrem/lunalite
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.lite
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: remnrem/lunalite:latest
+
+  build-lunapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build and push remnrem/lunapi
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.lunapi
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: remnrem/lunapi:latest
