@@ -7,7 +7,8 @@ WORKDIR /build
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Native ONNX Runtime used by luna-base when building the ORT command.
-# TARGETARCH is supplied automatically by buildx (amd64 or arm64).
+# TARGETARCH is supplied automatically by buildx (amd64 or arm64); when
+# building with plain 'docker build' it falls back to the host arch below.
 ARG ORT_VERSION=1.29.0
 ARG TARGETARCH
 
@@ -36,10 +37,19 @@ RUN wget https://www.fftw.org/fftw-3.3.10.tar.gz \
 # compilation.  ORT's Linux archive uses x64/aarch64 names rather than the
 # Docker buildx amd64/arm64 names.
 RUN set -eux; \
-    case "${TARGETARCH}" in \
+    RESOLVED_ARCH="${TARGETARCH:-}"; \
+    if [ -z "${RESOLVED_ARCH}" ]; then \
+      case "$(uname -m)" in \
+        x86_64) RESOLVED_ARCH=amd64 ;; \
+        aarch64|arm64) RESOLVED_ARCH=arm64 ;; \
+        *) echo "Unsupported host arch: $(uname -m)" >&2; exit 1 ;; \
+      esac; \
+      echo "TARGETARCH not set (plain 'docker build'?) - defaulting to ${RESOLVED_ARCH} from uname -m" >&2; \
+    fi; \
+    case "${RESOLVED_ARCH}" in \
       amd64) ORT_ARCH=x64 ;; \
       arm64) ORT_ARCH=aarch64 ;; \
-      *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+      *) echo "Unsupported TARGETARCH: ${RESOLVED_ARCH}" >&2; exit 1 ;; \
     esac; \
     wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ORT_VERSION}/onnxruntime-linux-${ORT_ARCH}-${ORT_VERSION}.tgz" \
       -O /tmp/onnxruntime.tgz; \
@@ -66,8 +76,6 @@ RUN cd /home/jovyan/ \
   && pip install --no-cache-dir pybind11
 
 ENV LD_LIBRARY_PATH=/opt/onnxruntime/lib:/usr/local/lib/
-
-RUN apt-get install -y 
 
 RUN mkdir /data \
  && mkdir /data1 \
@@ -124,14 +132,12 @@ RUN cd /build \
 
 RUN echo 'options(defaultPackages=c(getOption("defaultPackages"),"luna" ) )' > ~/.Rprofile
 
-# make lunapi 
-#RUN pip install pandas==2.1.1 numpy==1.26.4 scipy==1.11.1 matplotlib==3.8.2 \
-# && pip install plotly==5.22.0 nbformat==5.9.2 ipywidgets==8.1.1 \
+# make lunapi
 RUN cd /build \
  && git clone https://github.com/remnrem/luna-api.git \
  && cd luna-api \
  && cp CMakeLists.txt.docker CMakeLists.txt \
- && pip install . 
+ && pip install .
 
 USER jovyan
 
