@@ -4,23 +4,55 @@ LABEL description="Luna build container"
 
 WORKDIR /home
 
+ARG ORT_VERSION=1.29.0
+ARG TARGETARCH
+
 RUN apk update \
- && apk add --no-cache coreutils gcc g++ fftw-dev git make cmake \
- && git clone --recursive https://github.com/microsoft/LightGBM \
+ && apk add --no-cache ca-certificates coreutils gcc g++ fftw-dev git make cmake ninja bash patch \
+       python3 linux-headers
+
+# Build and validate the Alpine/musl ORT library before spending time on the
+# other native dependencies.  This is intentionally the first compilation
+# step so ORT failures are quick to diagnose.
+RUN set -eux; \
+    git clone --depth 1 --branch "v${ORT_VERSION}" --recursive \
+      https://github.com/microsoft/onnxruntime.git /home/onnxruntime; \
+    cd /home/onnxruntime; \
+    python3 tools/ci_build/build.py \
+      --build_dir /home/onnxruntime-build \
+      --allow_running_as_root \
+      --no_telemetry \
+      --config Release \
+      --build_shared_lib \
+      --skip_tests \
+      --parallel 2 \
+      --cmake_generator Ninja \
+      --cmake_extra_defines onnxruntime_BUILD_UNIT_TESTS=OFF; \
+    mkdir -p /opt/onnxruntime/include /opt/onnxruntime/lib; \
+    cp -R include/onnxruntime /opt/onnxruntime/include/; \
+    cp /home/onnxruntime-build/Linux/Release/libonnxruntime.so* /opt/onnxruntime/lib/; \
+    test -f /opt/onnxruntime/include/onnxruntime/core/session/onnxruntime_cxx_api.h; \
+    test -f /opt/onnxruntime/lib/libonnxruntime.so; \
+    rm -rf /home/onnxruntime /home/onnxruntime-build
+
+RUN git clone --recursive https://github.com/microsoft/LightGBM \
  && cd LightGBM \
  && mkdir build \
  && cd build \
  && cmake .. \
  && make -j2 \
  && make install \
- && cd /home 
+ && cd /home
 
-# force rebuild of luna etc from here below
-ADD "https://www.random.org/cgi-bin/randbyte?nbytes=10&format=h" skipcache
+# Keep the expensive native build cached by default.  Use
+# --build-arg LUNA_CACHE_BUST=... when deliberately rebuilding Luna.
+ARG LUNA_CACHE_BUST=0
+RUN echo "LUNA_CACHE_BUST=${LUNA_CACHE_BUST}"
 
 RUN git clone https://github.com/remnrem/luna-base.git \
  && cd luna-base \
- && make -j2 ARCH=LINUX LGBM=1 \
+ && make -j2 ARCH=LINUX LGBM=1 ORT=1 ORT_PATH=/opt/onnxruntime \
+ && ar t libluna.a | grep -Eq '(^|/)ort-(common|sleepfm)\.o$' \
  && cp luna destrat behead /usr/local/bin/ \
  && cd .. \
  && rm -rf luna-base \
@@ -30,12 +62,15 @@ RUN git clone https://github.com/remnrem/luna-base.git \
 FROM alpine:3.20.3 AS runtime
 LABEL description="Luna runtime container"
 
-RUN apk update && apk add --no-cache \ 
+RUN apk update && apk add --no-cache \
     libstdc++ fftw libgomp
 
 COPY --from=build /usr/local/bin/luna /usr/local/bin/luna
 COPY --from=build /usr/local/bin/destrat /usr/local/bin/destrat
 COPY --from=build /usr/local/bin/behead /usr/local/bin/behead
 COPY --from=build /usr/local/lib/lib_lightgbm.so /usr/local/lib/lib_lightgbm.so
+COPY --from=build /opt/onnxruntime/lib/libonnxruntime.so* /usr/local/lib/
+
+ENV LD_LIBRARY_PATH=/usr/local/lib
 
 WORKDIR /data
